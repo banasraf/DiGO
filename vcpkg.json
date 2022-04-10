@@ -1,0 +1,9 @@
+{
+    "name": "digo",
+    "version-string": "0.1.0",
+    "license": "MIT",
+    "dependencies": [
+      "grpc",
+      "catch2"
+    ]
+  }
