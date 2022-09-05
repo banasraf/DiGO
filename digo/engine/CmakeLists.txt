@@ -1,4 +1,0 @@
-add_library(DiGO-engine INTERFACE)
-target_include_directories(DiGO-engine INTERFACE .)
-
-

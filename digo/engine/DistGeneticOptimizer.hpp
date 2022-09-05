@@ -1,4 +1,6 @@
+#include "digo/engine/GeneticOptimizerService.hpp"
 
+#pragma once
 
 namespace digo {
 
