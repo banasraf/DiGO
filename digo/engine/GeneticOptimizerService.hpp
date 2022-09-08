@@ -9,16 +9,16 @@ using ::grpc::ServerContext;
 
 namespace digo {
 
-template <typename T, typename EvalFunc, typename CrossOp, typename MutOp, typename SelectOp, typename Population>
+template <typename T, typename Population, typename EvalFunc, typename CrossOp, typename MutOp, typename SelectOp>
 class GeneticOptimizerService final : public GeneticOptimizer::Service {
  public:
-  GeneticOptimizerService(const EvalFunc &eval_func, const CrossOp &cross_op, const SelectOp &select_op)
-  : impl_(eval_func, cross_op, select_op) {}
+  GeneticOptimizerService(const EvalFunc &eval_func, const CrossOp &cross_op, const MutOp &mut_op, const SelectOp &select_op)
+  : impl_(eval_func, cross_op, mut_op, select_op) {}
 
   Status Optimize(ServerContext *context, const OptRequest *request, OptResponse *response) override {
     auto population = UnpackPopulation(request);
-    impl_.Optimize(population, request->final_size(), request->intermediate_size(), request->n_iters());
-    auto results = impl_.Results();
+    impl_.Optimize(population, request->intermediate_size(), request->n_iters());
+    auto results = impl_.Results(request->final_size());
     PackResultsToRepsonse(results, response);
     return Status::OK;
   }

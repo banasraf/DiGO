@@ -3,8 +3,6 @@
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
 
 #include "digo/engine/DistGeneticOptimizer.hpp"
-#include "digo/engine/GeneticOptimizerService.hpp"
-
 
 
 namespace digo {
@@ -18,7 +16,9 @@ struct EvalFunc {
 
 struct SelectOp {
   Selection Select(const std::vector<float> &fitness, uint64_t next_gen_size) {
-    return Selection {std::vector<idx_t>(next_gen_size, 0), std::vector<match_t>{}};
+    std::vector<idx_t> winners(next_gen_size);
+    for (idx_t i = 0; i < next_gen_size; ++i) winners[i] = i;
+    return Selection {winners, std::vector<match_t>{}};
   }
 };
 
@@ -28,32 +28,22 @@ struct CrossOp {
   }
 };
 
-
-void RunServer() {
-  std::string server_address("0.0.0.0:50051");
-  GeneticOptimizerService<int, EvalFunc, CrossOp, void, SelectOp, IntPopulation>  service(EvalFunc{}, CrossOp{}, SelectOp{});
-
-  grpc::EnableDefaultHealthCheckService(true);
-  // grpc::reflection::InitProtoReflectionServerBuilderPlugin();
-  grpc::ServerBuilder builder;
-  // Listen on the given address without any authentication mechanism.
-  builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
-  // Register "service" as the instance through which we'll communicate with
-  // clients. In this case it corresponds to an *synchronous* service.
-  builder.RegisterService(&service);
-  // Finally assemble the server.
-  std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
-  std::cout << "Server listening on " << server_address << std::endl;
-
-  // Wait for the server to shutdown. Note that some other thread must be
-  // responsible for shutting down the server for this call to ever return.
-  server->Wait();
-}
+struct MutOp {
+  int Mut(int a) { return a; }
+};
 
 }  // namespace digo
 
 int main(int argc, char** argv) {
-  digo::RunServer();
-
+  auto port = "50051";
+  if (argc > 1) {
+    port = argv[1];
+  }
+  auto server = digo::CreateDiGOServer<int, digo::IntPopulation>(std::string("0.0.0.0:") + port,
+                                                                 digo::EvalFunc{},
+                                                                 digo::CrossOp{},
+                                                                 digo::MutOp{},
+                                                                 digo::SelectOp{});
+  server.RunAndWait();
   return 0;
 }

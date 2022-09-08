@@ -1,4 +1,5 @@
 #include <vector>
+#include <algorithm>
 
 #include "digo/common/error.hpp"
 #include "digo/common/types.h"
@@ -16,6 +17,8 @@ struct OptimizationResult {
                  "Size of the population and fitness vector mismatched");
   }
 
+  OptimizationResult() = default;
+
   const auto &elements() const {
     return elements_;
   }
@@ -32,24 +35,34 @@ struct OptimizationResult {
 template <typename T, typename EvalFunc, typename CrossOp, typename MutOp, typename SelectOp>
 class GOImpl {
  public:
-  GOImpl(const EvalFunc &eval_func, const CrossOp &cross_op, const SelectOp &select_op)
+  GOImpl(const EvalFunc &eval_func, const CrossOp &cross_op, const MutOp &mut_op, const SelectOp &select_op)
   : eval_func_(eval_func)
   , cross_op_(cross_op)
+  , mut_op_(mut_op)
   , select_op_(select_op) {}
 
-  void Optimize(std::vector<T> population,
-                uint64_t final_size, uint64_t intermediate_size,
+  void Optimize(std::vector<T> population, uint64_t intermediate_size,
                 uint64_t n_iters) {
     population_ = std::move(population);
     CalcFitness();
-    for (uint64_t i = 1; i < n_iters; ++i) {
+    for (uint64_t i = 0; i < n_iters; ++i) {
       OptStep(intermediate_size);
     }
-    OptStep(final_size);
   }
 
-  OptimizationResult<T> Results() const {
-    return OptimizationResult(population_, fitness_);
+  OptimizationResult<T> Results(uint64_t final_size) const {
+    std::vector<std::pair<float, idx_t>> fit_idx(population_.size());
+    for (idx_t i = 0; i < static_cast<idx_t>(fitness_.size()); ++i) {
+      fit_idx[i] = {fitness_[i], i};
+    }
+    std::sort(fit_idx.begin(), fit_idx.end(), std::greater());
+    std::vector<T> result_population(final_size);
+    std::vector<float> result_fitness(final_size);
+    for (uint64_t i = 0; i < final_size; ++i) {
+      result_fitness[i] = fit_idx[i].first;
+      result_population[i] = population_[fit_idx[i].second];
+    }
+    return OptimizationResult(result_population, result_fitness);
   }
 
   const std::vector<fitness_t> &fitness() const {
@@ -83,7 +96,8 @@ class GOImpl {
     tmp_population_.reserve(tmp_population_.size() + matches.size());
     for (auto match: matches) {
       auto new_elem = cross_op_.Cross(population_[match.first], population_[match.second]);
-      tmp_population_.push_back(new_elem);
+      auto mutated = mut_op_.Mut(new_elem);
+      tmp_population_.push_back(mutated);
     }
   }
 
@@ -92,6 +106,7 @@ class GOImpl {
   std::vector<fitness_t> fitness_;
   EvalFunc eval_func_;
   CrossOp cross_op_;
+  MutOp mut_op_;
   SelectOp select_op_;
 };
 

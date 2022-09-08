@@ -1,6 +1,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <algorithm>
 
 #include <grpcpp/grpcpp.h>
 #include <google/protobuf/any.h>
@@ -9,88 +10,35 @@
 
 namespace digo {
 
-class GreeterClient {
- public:
-  GreeterClient(std::shared_ptr<grpc::Channel> channel)
-      : stub_(GeneticOptimizer::NewStub(channel)) {}
+template <typename T>
+struct MultiplyAndSelect {
+  MultiplyAndSelect(uint64_t selection_size): selection_size_(selection_size) {}
 
-  // Assembles the client's payload, sends it and presents the response back
-  // from the server.
-  std::string SayHello(const std::string& user) {
-    // Data we are sending to the server.
-    HelloRequest request;
-    request.set_name(user);
-
-    // Container for the data we expect from the server.
-    HelloReply reply;
-
-    // Context for the client. It could be used to convey extra information to
-    // the server and/or tweak certain RPC behaviors.
-    grpc::ClientContext context;
-
-    // The actual RPC.
-    Status status = stub_->SayHello(&context, request, &reply);
-
-    // Act upon its status.
-    if (status.ok()) {
-      return reply.message();
-    } else {
-      std::cout << status.error_code() << ": " << status.error_message()
-                << std::endl;
-      return "RPC failed";
-    }
+  std::vector<std::vector<T>> Distribute(const std::vector<T> &population, uint64_t parts) {
+    return std::vector<std::vector<T>>(parts, population);
   }
 
-  template <typename T>
-  std::string SayAny(const T &any) {
-    // AnyReq request;
-    // request.mutable_details()->set_value(any);
-    // HelloReply reply;
+  OptimizationResult<T> Merge(const std::vector<OptimizationResult<T>> &results) {
+    std::vector<std::tuple<fitness_t, idx_t, idx_t>> rank;
+    for (idx_t r = 0; r < results.size(); ++r) {
+      for (idx_t i = 0; i < results[r].fitness().size(); ++i) {
+        rank.push_back(std::make_tuple(results[r].fitness()[i], r, i));
+      }
+    }
+    std::sort(rank.begin(), rank.end(), std::greater());
 
-    // // Context for the client. It could be used to convey extra information to
-    // // the server and/or tweak certain RPC behaviors.
-    // grpc::ClientContext context;
-
-    // // The actual RPC.
-    // Status status = stub_->SayAny(&context, request, &reply);
-
-    // if (status.ok()) {
-    //   return reply.message();
-    // } else {
-    //   std::cout << status.error_code() << ": " << status.error_message()
-    //             << std::endl;
-    //   return "RPC failed";
-    // }
+    std::vector<T> selected;
+    selected.reserve(selection_size_);
+    std::vector<fitness_t> selected_f;
+    selected_f.reserve(selection_size_);
+    for (int i = 0; i < selection_size_; ++i) {
+      selected.push_back(results[std::get<1>(rank[i])].elements()[std::get<2>(rank[i])]);
+      selected_f.push_back(std::get<0>(rank[i]));
+    }
+    return {selected, selected_f};
   }
 
-  std::pair<std::vector<int64_t>, std::vector<float>> Optimize(const std::vector<int64_t> &population) {
-    grpc::ClientContext context;
-    OptRequest request;
-    request.set_final_size(population.size());
-    request.set_intermediate_size(population.size());
-    request.set_n_iters(1);
-    IntPopulation ipopulation;
-    for (auto elem: population) {
-      ipopulation.add_elements(elem);
-    }
-    request.mutable_population()->PackFrom(ipopulation);
-
-    OptResponse response;
-    auto status = stub_->Optimize(&context, request, &response);
-    if (status.ok()) {
-      IntPopulation irpop;
-      response.population().UnpackTo(&irpop);
-      std::vector<int64_t> res_pop(irpop.elements().begin(), irpop.elements().end());
-      std::vector<float> res_fitness(response.fitness().begin(), response.fitness().end());
-      return {res_pop, res_fitness};
-    } else {
-      std::cout << "error" << std::endl;
-      return {};
-    }
-  }
-
- private:
-  std::unique_ptr<GeneticOptimizer::Stub> stub_;
+  uint64_t selection_size_;
 };
 
 }
@@ -121,20 +69,22 @@ int main(int argc, char** argv) {
   } else {
     target_str = "localhost:50051";
   }
-  digo::GreeterClient greeter(grpc::CreateChannel(
-      target_str, grpc::InsecureChannelCredentials()));
+  // digo::GreeterClient greeter(grpc::CreateChannel(
+  //     target_str, grpc::InsecureChannelCredentials()));
   // std::string user("Rafal");
   // std::string reply = greeter.SayHello(user);
   // std::cout << "Greeter received: " << reply << std::endl;
   // digo::HelloRequest request;
   // request.set_name(user);
   // greeter.SayAny(request);
-  auto result = greeter.Optimize(std::vector<int64_t>{1, 2, 3, 4, 5});
-  for (auto r: result.first) {
+  // auto result = greeter.Optimize(std::vector<int64_t>{1, 2, 3, 4, 5});
+  auto client = digo::CreateDiGOClient<int64_t, digo::IntPopulation>(std::vector<std::string>{target_str, "localhost:50052"}, digo::MultiplyAndSelect<int64_t>(4));
+  auto result = client.Optimize(3, 5, 10, std::vector<int64_t>{1, 2, 3, 4, 5});
+  for (auto r: result.elements()) {
     std::cout << r << " ";
   }
   std::cout << std::endl;
-  for (auto r: result.second) {
+  for (auto r: result.fitness()) {
     std::cout << r << " ";
   }
   std::cout << std::endl;

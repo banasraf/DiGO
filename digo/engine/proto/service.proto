@@ -6,11 +6,6 @@ package digo;
 
 // The greeting service definition.
 service GeneticOptimizer {
-  // Sends a greeting
-  rpc SayHello (HelloRequest) returns (HelloReply) {}
-
-  rpc SayAny (AnyReq) returns (HelloReply) {}
-
   rpc Optimize(OptRequest) returns (OptResponse) {}
 }
 
