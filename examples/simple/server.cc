@@ -1,49 +1,31 @@
-#include <grpcpp/grpcpp.h>
-#include <grpcpp/health_check_service_interface.h>
-#include <grpcpp/ext/proto_server_reflection_plugin.h>
+#include <vector>
+#include <algorithm>
+#include <random>
 
 #include "digo/engine/DistGeneticOptimizer.hpp"
+#include "digo/ops_lib/permutation/Crossing.hpp"
+#include "digo/ops_lib/permutation/Mutation.hpp"
+#include "digo/ops_lib/Selection.hpp"
 
-
-namespace digo {
-
-struct EvalFunc {
-  float Eval(int a) {
-    return static_cast<float>(a);
-  }
-};
-
-
-struct SelectOp {
-  Selection Select(const std::vector<float> &fitness, uint64_t next_gen_size) {
-    std::vector<idx_t> winners(next_gen_size);
-    for (idx_t i = 0; i < next_gen_size; ++i) winners[i] = i;
-    return Selection {winners, std::vector<match_t>{}};
-  }
-};
-
-struct CrossOp {
-  int Cross(int a, int b) {
-    return (a + b) / 2;
-  }
-};
-
-struct MutOp {
-  int Mut(int a) { return a; }
-};
-
-}  // namespace digo
+#include "common.hpp"
 
 int main(int argc, char** argv) {
   auto port = "50051";
   if (argc > 1) {
     port = argv[1];
   }
-  auto server = digo::CreateDiGOServer<int, digo::IntPopulation>(std::string("0.0.0.0:") + port,
-                                                                 digo::EvalFunc{},
-                                                                 digo::CrossOp{},
-                                                                 digo::MutOp{},
-                                                                 digo::SelectOp{});
+
+  std::vector<float> cost_matrix(N*N);
+  std::random_device rd{};
+  std::mt19937 gen(rd());
+  std::uniform_real_distribution<float> dist(0.f, 1.f);
+  std::generate(cost_matrix.begin(), cost_matrix.end(), [&]() { return dist(gen); });
+
+  auto server = digo::CreateDiGOServer<std::string, digo::PermPopulation>(std::string("0.0.0.0:") + port,
+                                                                         TSPEval(N, cost_matrix),
+                                                                         digo::CrossPermuts(rd()),
+                                                                         digo::RandomSwap(rd(), 0.08),
+                                                                         digo::Roulette(rd(), 1, 0.5, 2));
   server.RunAndWait();
   return 0;
 }

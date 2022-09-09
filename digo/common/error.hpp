@@ -11,7 +11,7 @@ class DiGOError : public std::runtime_error {
 
 #define DIGO_ENFORCE(cond, msg) \
 while (!(cond)) {                  \
-  throw DiGOError(std::string(msg)); break;   \
+  throw digo::DiGOError(std::string(msg)); break;   \
 };
 
 } // namespace digo

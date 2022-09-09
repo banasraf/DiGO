@@ -9,20 +9,6 @@ service GeneticOptimizer {
   rpc Optimize(OptRequest) returns (OptResponse) {}
 }
 
-// The request message containing the user's name.
-message HelloRequest {
-  string name = 1;
-}
-
-message AnyReq {
-  google.protobuf.Any details = 1;
-}
-
-// The response message containing the greetings
-message HelloReply {
-  string message = 1;
-}
-
 message OptRequest {
   uint64 final_size = 1;
   optional uint64 intermediate_size = 2;
@@ -30,11 +16,15 @@ message OptRequest {
   google.protobuf.Any population = 4;
 }
 
+message OptResponse {
+  google.protobuf.Any population = 1;
+  repeated float fitness = 2;
+}
+
 message IntPopulation {
   repeated int64 elements = 1;
 }
 
-message OptResponse {
-  google.protobuf.Any population = 1;
-  repeated float fitness = 2;
+message PermPopulation {
+  repeated string elements = 1;
 }

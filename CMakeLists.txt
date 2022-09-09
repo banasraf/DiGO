@@ -9,7 +9,7 @@ find_package(Catch2 CONFIG REQUIRED)
 add_subdirectory(digo)
 
 add_library(DiGO INTERFACE)
-target_link_libraries(DiGO INTERFACE DiGO-engine)
+target_link_libraries(DiGO INTERFACE DiGO-engine DiGO-opslib)
 target_include_directories(DiGO INTERFACE .)
 target_include_directories(DiGO INTERFACE ${CMAKE_CURRENT_BINARY_DIR})
 

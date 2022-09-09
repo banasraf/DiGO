@@ -1,5 +1,4 @@
 add_library(DiGO-engine DistGOServer.cc)
-# target_include_directories(DiGO-engine PUBLIC .)
 target_include_directories(DiGO-engine PRIVATE ${PROJECT_SOURCE_DIR})
 target_include_directories(DiGO-engine PRIVATE ${PROJECT_BINARY_DIR})
 

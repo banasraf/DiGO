@@ -12,8 +12,7 @@ template <typename T, typename Population, typename DistStrategy>
 class DistGeneticOptimizerClient {
  public:
   DistGeneticOptimizerClient(const std::vector<std::string> &servers, const DistStrategy &dist_strategy)
-  : dist_strategy_(dist_strategy)
-  , contexts_(servers.size()) {
+  : dist_strategy_(dist_strategy) {
     servers_.reserve(servers.size());
     for (auto address: servers) {
       auto channel = grpc::CreateChannel(address, grpc::InsecureChannelCredentials());
@@ -27,10 +26,11 @@ class DistGeneticOptimizerClient {
     std::vector<OptRequest> requests(servers_.size());
     std::vector<std::vector<T>> dist_pops = dist_strategy_.Distribute(population, servers_.size());
     std::vector<std::unique_ptr<grpc::ClientAsyncResponseReader<OptResponse>>> rpcs;
+    std::vector<grpc::ClientContext> contexts(servers_.size());
     for (size_t i = 0; i < servers_.size(); ++i) {
       PackRequest(final_size, intermediate_size, n_iters, population, &requests[i]);
       rpcs.emplace_back(
-        servers_[i]->PrepareAsyncOptimize(&contexts_[i], requests[i], &completion_queue_)
+        servers_[i]->PrepareAsyncOptimize(&contexts[i], requests[i], &completion_queue_)
       );
       rpcs.back()->StartCall();
     }
@@ -81,7 +81,6 @@ class DistGeneticOptimizerClient {
   DistStrategy dist_strategy_;
   std::vector<std::unique_ptr<GeneticOptimizer::Stub>> servers_{};
   grpc::CompletionQueue completion_queue_;
-  std::vector<grpc::ClientContext> contexts_;
 };
 
 } // namespace digo

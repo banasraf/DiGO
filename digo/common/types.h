@@ -1,6 +1,8 @@
 #include <cstdint>
 #include <vector>
 
+#pragma once
+
 namespace digo {
 
 using fitness_t = float;
