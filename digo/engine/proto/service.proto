@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+import "google/protobuf/any.proto";
+
+package digo;
+
+// The greeting service definition.
+service GeneticOptimizer {
+  rpc Optimize(OptRequest) returns (OptResponse) {}
+}
+
+message OptRequest {
+  uint64 final_size = 1;
+  optional uint64 intermediate_size = 2;
+  uint64 n_iters = 3;
+  google.protobuf.Any population = 4;
+}
+
+message OptResponse {
+  google.protobuf.Any population = 1;
+  repeated float fitness = 2;
+}
+
+message IntPopulation {
+  repeated int64 elements = 1;
+}
+
+message PermPopulation {
+  repeated string elements = 1;
+}
